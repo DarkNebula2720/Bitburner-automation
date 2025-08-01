@@ -1,4 +1,4 @@
-// Central orchestrator: main.js
+// main.js — Central orchestrator
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -14,12 +14,18 @@ export async function main(ns) {
 
   for (const mod of modules) {
     try {
+      const module = await import(mod);
+      if (typeof module.shouldRun === "function" && !module.shouldRun(ns)) {
+        ns.tprint(`⚠️ Skipped ${mod}: conditions not met.`);
+        continue;
+      }
+
       ns.tprint(`🚀 Launching ${mod}`);
       ns.run(mod);
     } catch (e) {
-      ns.tprint(`❌ Failed to run ${mod}: ${e}`);
+      ns.tprint(`❌ Failed to launch ${mod}: ${e}`);
     }
   }
 
-  ns.tprint("✅ All automation modules launched.");
+  ns.tprint("✅ All eligible automation modules launched.");
 }
