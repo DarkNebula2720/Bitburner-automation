@@ -1,4 +1,4 @@
-// git-pull.js — pulls fresh modules and deletes outdated ones
+// git-pull.js — safely syncs all modules from GitHub
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -38,7 +38,7 @@ export async function main(ns) {
   ns.tprint("⬇️ Downloading fresh files...");
   for (const file of files) {
     const url = repo + file;
-    const success = await ns.wget(url, file);
+    const success = await ns.wget(url, file, "home", true); // ⬅️ FORCE overwrite
     ns.tprint(`${success ? "✅" : "❌"} ${file}`);
   }
 
