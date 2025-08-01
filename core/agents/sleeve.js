@@ -2,8 +2,12 @@
 
 /** @param {NS} ns */
 export async function main(ns) {
-  const count = ns.sleeve.getNumSleeves();
+  if (!ns.sleeve || typeof ns.sleeve.getNumSleeves !== "function") {
+    ns.tprint("🛑 Sleeve API not available. Skipping sleeve management.");
+    return;
+  }
 
+  const count = ns.sleeve.getNumSleeves();
   for (let i = 0; i < count; i++) {
     const sleeve = ns.sleeve.getSleeve(i);
     const task = decideSleeveTask(ns, i, sleeve);
