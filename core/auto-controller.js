@@ -7,7 +7,11 @@ import {
   FACTION_PRIORITY
 } from "/lib/config.js";
 
-import { getGoals, hasGoal } from "/lib/goals.js";
+import {
+  getGoals,
+  hasGoal,
+  getInstallThreshold
+} from "/lib/goals.js";
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -16,12 +20,13 @@ export async function main(ns) {
 
   while (true) {
     const stage = getGameStage(ns);
-    ns.tprint(`🧭 Stage: ${stage} | Money: ${format(ns.getServerMoneyAvailable("home"), ns)}`);
+    const money = ns.getServerMoneyAvailable("home");
+    ns.tprint(`🧭 Stage: ${stage} | Money: ${format(money, ns)}`);
 
     if (shouldInstall(ns)) {
       ns.tprint("🧬 Install threshold reached. Triggering augmentation install...");
       if (ns.fileExists("Tasks/reserve.js")) {
-        ns.run("Tasks/reserve.js"); // optional reservation logic
+        ns.run("Tasks/reserve.js");
         await ns.sleep(1000);
       }
       ns.installAugmentations("main.js");
@@ -30,19 +35,15 @@ export async function main(ns) {
 
     // 🎯 Goals-driven execution
     const goals = getGoals(ns);
-
     if (goals.includes("karma") || goals.includes("gang")) {
       runIfNotRunning(ns, "core/agents/gangs.js");
     }
-
     if (goals.includes("money") || goals.includes("income")) {
       runIfNotRunning(ns, "core/autopilot.js");
     }
-
     if (goals.includes("factions")) {
       runIfNotRunning(ns, "core/faction-manager.js");
     }
-
     if (goals.includes("contracts")) {
       runIfNotRunning(ns, "Tasks/contractor.js");
     }
@@ -66,7 +67,6 @@ export async function main(ns) {
     }
 
     runIfNotRunning(ns, "core/status.js");
-
     await ns.sleep(30000);
   }
 }
@@ -94,8 +94,15 @@ function shouldInstall(ns) {
     const pending = playerFactions.flatMap(fac =>
       ns.singularity.getAugmentationsFromFaction(fac).filter(a => !owned.includes(a))
     );
+
+    const numReady = pending.length;
+    const installGoal = getInstallThreshold(ns);
+    if (installGoal !== null) {
+      return numReady >= installGoal;
+    }
+
     const hasCore = CORE_AUGMENTS.some(a => owned.includes(a));
-    const hasMultiple = pending.length >= 2;
+    const hasMultiple = numReady >= 2;
     const moneyReady = ns.getServerMoneyAvailable("home") >= 5e9;
     return hasCore && hasMultiple && moneyReady;
   } catch {
