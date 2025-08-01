@@ -1,11 +1,29 @@
-// core/goal-planner.js — Interactive Goal Configuration Tool
+// core/goal-planner.js — Goal + Mode Selector GUI Tool
 
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
-  const path = "data/goals.txt";
 
-  const allOptions = [
+  const goalPath = "data/goals.txt";
+  const modePath = "data/mode.txt";
+
+  // ⏪ Load existing goals
+  let currentGoals = [];
+  if (ns.fileExists(goalPath)) {
+    currentGoals = ns.read(goalPath).trim().split("\n").filter(Boolean);
+  }
+
+  let currentMode = "auto";
+  if (ns.fileExists(modePath)) {
+    currentMode = ns.read(modePath).trim();
+  }
+
+  // 🧠 Show current state
+  ns.tprint("📌 Current Goals: " + (currentGoals.length ? currentGoals.join(", ") : "(none)"));
+  ns.tprint("🧭 Current Mode: " + currentMode);
+
+  // 🎯 Select goals
+  const goalOptions = [
     "install-3",
     "install-5",
     "money-1b",
@@ -20,16 +38,25 @@ export async function main(ns) {
     "none"
   ];
 
-  const selected = await ns.prompt("🧠 Select active goals (multi-select):", {
+  const selectedGoals = await ns.prompt("🧠 Select active goals (multi-select):", {
     type: "multiselect",
-    choices: allOptions
+    choices: goalOptions
   });
 
-  if (!selected || selected.length === 0 || selected.includes("none")) {
-    ns.write(path, "", "w");
-    ns.tprint("🗑️ Cleared all active goals.");
+  if (!selectedGoals || selectedGoals.includes("none") || selectedGoals.length === 0) {
+    ns.write(goalPath, "", "w");
+    ns.tprint("🗑️ Cleared all goals.");
   } else {
-    ns.write(path, selected.join("\n"), "w");
-    ns.tprint(`✅ Goals updated: [${selected.join(", ")}]`);
+    ns.write(goalPath, selectedGoals.join("\n"), "w");
+    ns.tprint(`✅ Goals updated: [${selectedGoals.join(", ")}]`);
   }
+
+  // ⚙️ Select mode
+  const newMode = await ns.prompt("🧭 Choose operational mode:", {
+    type: "select",
+    choices: ["auto", "manual"]
+  });
+
+  ns.write(modePath, newMode, "w");
+  ns.tprint(`✅ Mode updated: ${newMode}`);
 }
