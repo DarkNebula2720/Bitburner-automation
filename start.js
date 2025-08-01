@@ -7,45 +7,50 @@ export async function main(ns) {
   const args = ns.args;
   let mode = args[0];
 
-  // Prompt if not passed
-  if (!mode) {
-    const response = await ns.prompt("Choose a startup mode", {
+  // Prompt mode if not passed
+  if (!mode || (mode !== "auto" && mode !== "manual")) {
+    const selection = await ns.prompt("Choose a startup mode", {
       type: "select",
       choices: ["auto", "manual"]
     });
-    mode = response;
+    mode = selection;
   }
 
-  // 💣 Kill all user scripts except this one
-  ns.tprint("🧹 Cleaning up old scripts...");
+  // 🧹 Kill all scripts except this one
+  ns.tprint("🧹 Cleaning up running scripts...");
   for (const proc of ns.ps("home")) {
     if (proc.pid !== ns.pid) {
       ns.kill(proc.pid);
     }
   }
 
-  // 🚨 RAM check
+  // 🚨 RAM safety check
   const ramTotal = ns.getServerMaxRam("home");
   const ramUsed = ns.getServerUsedRam("home");
   const ramFree = ramTotal - ramUsed;
-
   const reserve = 16;
+
   if (ramFree < reserve) {
-    ns.tprint(`🛑 Not enough free RAM (${ns.nFormat(ramFree, "0.00")}GB). Need at least ${reserve}GB.`);
+    ns.tprint(`🛑 Not enough free RAM (${ns.nFormat(ramFree, "0.00")}GB). Minimum required: ${reserve}GB.`);
     return;
   }
 
-  // 🧠 Start controller
+  // 🧠 Start controller or watchdog
   if (mode === "auto") {
-    ns.tprint("🚀 Starting Autonomous Mode");
-    ns.run("core/auto-controller.js");
+    ns.tprint("🚀 Launching Autonomous Watchdog...");
+    ns.run("core/watchdog.js");
   } else if (mode === "manual") {
-    ns.tprint("🧑‍💻 Starting Manual Assist Mode");
+    ns.tprint("🧑‍💻 Launching Manual Assistant...");
     ns.run("core/manual-controller.js");
   } else {
-    ns.tprint(`❌ Unknown mode: ${mode}`);
+    ns.tprint(`❌ Unknown mode: "${mode}"`);
+    return;
   }
 
-  // Save selection for future restarts
-  ns.write("data/mode.txt", mode, "w");
+  // Save mode to disk
+  try {
+    ns.write("data/mode.txt", mode, "w");
+  } catch {
+    ns.write("mode.txt", mode, "w"); // fallback
+  }
 }
