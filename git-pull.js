@@ -1,4 +1,4 @@
-// git-pull.js — pulls all files from the GitHub repo into Bitburner
+// git-pull.js — pulls fresh modules and deletes outdated ones
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -6,7 +6,7 @@ export async function main(ns) {
 
   const files = [
     // core
-    "core/main.js",
+    "main.js",
     "core/autopilot.js",
     "core/faction-manager.js",
     "core/host-manager.js",
@@ -27,6 +27,15 @@ export async function main(ns) {
     "Tasks/contractor.js"
   ];
 
+  ns.tprint("🧹 Deleting stale files...");
+  for (const file of files) {
+    if (ns.fileExists(file)) {
+      ns.rm(file);
+      ns.tprint(`🗑️ Removed ${file}`);
+    }
+  }
+
+  ns.tprint("⬇️ Downloading fresh files...");
   for (const file of files) {
     const url = repo + file;
     const success = await ns.wget(url, file);
