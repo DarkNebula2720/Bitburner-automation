@@ -14,10 +14,13 @@ export async function main(ns) {
     const sleeves = ns.sleeve.getNumSleeves();
     for (let i = 0; i < sleeves; i++) {
       const s = ns.sleeve.getSleeve(i);
-      ns.print(`Sleeve[${i}] Sync: ${s.sync}% | Shock: ${s.shock}`);
+      ns.print(`Sleeve[${i}] Sync: ${s.sync.toFixed(1)}% | Shock: ${s.shock.toFixed(1)}%`);
     }
 
-    ns.print("Factions:    " + ns.getPlayer().factions.join(", "));
+    const player = ns.getPlayer();
+    ns.print("Factions:    " + player.factions.join(", "));
+    ns.print(`Hacking:     Lv. ${player.skills.hacking}`);
+    ns.print(`Karma:       ${ns.nFormat(ns.heart.break(), "0.0")}`);
 
     await ns.sleep(2000);
   }
