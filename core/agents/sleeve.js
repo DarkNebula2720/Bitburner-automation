@@ -1,9 +1,9 @@
-// Refactored: core/agents/sleeve.js
+// core/agents/sleeve.js
 
 /** @param {NS} ns */
 export async function main(ns) {
-  if (!ns.sleeve || typeof ns.sleeve.getNumSleeves !== "function") {
-    ns.tprint("🛑 Sleeve API not available. Skipping sleeve management.");
+  if (!canUseSleeves(ns)) {
+    ns.tprint("🛑 Sleeve API not available (BitNode-10 or SF10 required).");
     return;
   }
 
@@ -11,12 +11,14 @@ export async function main(ns) {
   for (let i = 0; i < count; i++) {
     const sleeve = ns.sleeve.getSleeve(i);
     const task = decideSleeveTask(ns, i, sleeve);
-    if (task) {
-      assignSleeveTask(ns, i, task);
-    }
+    if (task) assignSleeveTask(ns, i, task);
   }
 
   ns.tprint("🧬 Sleeves optimized.");
+}
+
+function canUseSleeves(ns) {
+  return ns.sleeve && typeof ns.sleeve.getNumSleeves === "function";
 }
 
 function decideSleeveTask(ns, index, sleeve) {
@@ -29,13 +31,15 @@ function decideSleeveTask(ns, index, sleeve) {
 function assignSleeveTask(ns, i, task) {
   switch (task.type) {
     case "recovery":
-      ns.sleeve.setToShockRecovery(i);
-      break;
+      ns.sleeve.setToShockRecovery(i); break;
     case "synchronize":
-      ns.sleeve.setToSynchronize(i);
-      break;
+      ns.sleeve.setToSynchronize(i); break;
     case "crime":
-      ns.sleeve.setToCommitCrime(i, task.name);
-      break;
+      ns.sleeve.setToCommitCrime(i, task.name); break;
   }
+}
+
+/** Optional: used by main.js to check if script is allowed to run */
+export function shouldRun(ns) {
+  return canUseSleeves(ns);
 }
