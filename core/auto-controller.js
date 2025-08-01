@@ -16,16 +16,38 @@ export async function main(ns) {
 
   while (true) {
     const stage = getGameStage(ns);
-    ns.tprint(`🧭 Stage: ${stage} | Money: ${format(ns.getServerMoneyAvailable("home"))}`);
+    ns.tprint(`🧭 Stage: ${stage} | Money: ${format(ns.getServerMoneyAvailable("home"), ns)}`);
 
     if (shouldInstall(ns)) {
       ns.tprint("🧬 Install threshold reached. Triggering augmentation install...");
-      ns.run("Tasks/reserve.js"); // optional: reserve RAM/money first
-      await ns.sleep(1000);
+      if (ns.fileExists("Tasks/reserve.js")) {
+        ns.run("Tasks/reserve.js"); // optional reservation logic
+        await ns.sleep(1000);
+      }
       ns.installAugmentations("main.js");
-      return; // this process will die after install anyway
+      return;
     }
 
+    // 🎯 Goals-driven execution
+    const goals = getGoals(ns);
+
+    if (goals.includes("karma") || goals.includes("gang")) {
+      runIfNotRunning(ns, "core/agents/gangs.js");
+    }
+
+    if (goals.includes("money") || goals.includes("income")) {
+      runIfNotRunning(ns, "core/autopilot.js");
+    }
+
+    if (goals.includes("factions")) {
+      runIfNotRunning(ns, "core/faction-manager.js");
+    }
+
+    if (goals.includes("contracts")) {
+      runIfNotRunning(ns, "Tasks/contractor.js");
+    }
+
+    // 📈 Stage-based modules
     if (stage === "early") {
       runIfNotRunning(ns, "core/host-manager.js");
       runIfNotRunning(ns, "core/autopilot.js");
@@ -44,6 +66,7 @@ export async function main(ns) {
     }
 
     runIfNotRunning(ns, "core/status.js");
+
     await ns.sleep(30000);
   }
 }
@@ -65,14 +88,19 @@ function getGameStage(ns) {
 }
 
 function shouldInstall(ns) {
-  const owned = ns.singularity.getOwnedAugmentations(true);
-  const pending = ns.singularity.getAugmentationsFromFaction(ns.getPlayer().factions[0])
-    .filter(a => !owned.includes(a));
-  const hasCore = CORE_AUGMENTS.some(a => owned.includes(a));
-  const hasMultiple = pending.length > 2;
-
-  const moneyReady = ns.getServerMoneyAvailable("home") > 5e9;
-  return hasCore && hasMultiple && moneyReady;
+  try {
+    const owned = ns.singularity.getOwnedAugmentations(true);
+    const playerFactions = ns.getPlayer().factions || [];
+    const pending = playerFactions.flatMap(fac =>
+      ns.singularity.getAugmentationsFromFaction(fac).filter(a => !owned.includes(a))
+    );
+    const hasCore = CORE_AUGMENTS.some(a => owned.includes(a));
+    const hasMultiple = pending.length >= 2;
+    const moneyReady = ns.getServerMoneyAvailable("home") >= 5e9;
+    return hasCore && hasMultiple && moneyReady;
+  } catch {
+    return false;
+  }
 }
 
 function runIfNotRunning(ns, script) {
@@ -83,6 +111,6 @@ function runIfNotRunning(ns, script) {
   }
 }
 
-function format(n) {
+function format(n, ns) {
   return ns.nFormat(n, "$0.00a");
 }
