@@ -1,16 +1,21 @@
 // core/manual-controller.js — Manual Assist Mode
 
+import { queueGoal } from "/lib/goals.js";
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.tprint("🧑‍💻 Manual Assistant Online. Listening for goals...");
 
-  const port = ns.getPortHandle(1); // Use Port 1 for commands
+  const port = ns.getPortHandle(1); // Use Port 1 for manual commands
 
   while (true) {
     if (!port.empty()) {
       const command = port.read().toString().trim().toLowerCase();
+      if (!command) continue;
+
       ns.tprint(`📨 Received command: "${command}"`);
+      queueGoal(ns, command); // add to goal system
 
       if (command.includes("money") || command === "farm") {
         ns.tprint("💰 Launching autopilot for income...");
