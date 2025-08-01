@@ -7,6 +7,8 @@ import {
   FACTION_PRIORITY
 } from "/lib/config.js";
 
+import { getGoals, hasGoal } from "/lib/goals.js";
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
