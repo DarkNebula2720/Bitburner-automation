@@ -1,4 +1,4 @@
-// core/status.js — Real-Time Status Dashboard (Full Upgrade)
+// core/status.js — Full Game-Aware Status Panel
 
 import { getGoals, getInstallThreshold } from "/lib/goals.js";
 
@@ -17,13 +17,11 @@ export async function main(ns) {
     ns.print(`🧭 Stage: ${stage}`);
     ns.print(`💰 Money: ${ns.nFormat(money, "$0.00a")}`);
 
-    // 🔁 Track money to estimate income
     history.push({ time: Date.now(), money });
     while (history.length > 10) history.shift();
     const eta = estimateIncomeETA(history, ns);
-    if (eta) ns.print(`⏱️  ETA to target: ${eta}`);
+    if (eta) ns.print(`⏱️ ETA to 5b: ${eta}`);
 
-    // 🧬 Augments
     const augInfo = getAugmentStatus(ns);
     ns.print(`🧬 Augments Ready: ${augInfo.ready} | Owned: ${augInfo.owned}`);
 
@@ -32,7 +30,6 @@ export async function main(ns) {
       ns.print(`🎯 Install After: ${installGoal} augments`);
     }
 
-    // 📌 Goals
     const goals = getGoals(ns);
     if (goals.length > 0) {
       ns.print("📌 Active Goals:");
@@ -41,11 +38,40 @@ export async function main(ns) {
       ns.print("📌 No queued goals.");
     }
 
-    // ⚙️ Running Modules
     ns.print("📦 Running Modules:");
     const running = ns.ps("home").map(p => p.filename);
     for (const script of running.sort()) {
       ns.print(`- ${script}`);
+    }
+
+    // 🏛️ Faction Info
+    ns.print("🏛️ Joined Factions:");
+    const factions = ns.getPlayer().factions || [];
+    for (const f of factions) {
+      const favor = ns.singularity.getFactionFavor(f);
+      const rep = ns.singularity.getFactionRep(f);
+      const highlight = rep >= 25000 ? "✅" : "";
+      ns.print(`- ${f.padEnd(18)} Rep: ${ns.nFormat(rep, "0.00a")} | Favor: ${Math.floor(favor)} ${highlight}`);
+    }
+
+    // 🛒 Augment Costs
+    ns.print("🛒 Augments (next 5):");
+    const owned = ns.singularity.getOwnedAugmentations(true);
+    const augList = factions.flatMap(f =>
+      ns.singularity.getAugmentationsFromFaction(f)
+        .filter(a => !owned.includes(a))
+    );
+
+    const unique = [...new Set(augList)];
+    const prices = unique.map(a => ({
+      name: a,
+      cost: ns.singularity.getAugmentationPrice(a)
+    }));
+
+    prices.sort((a, b) => b.cost - a.cost);
+    for (const { name, cost } of prices.slice(0, 5)) {
+      const affordable = cost <= money ? "✅" : "❌";
+      ns.print(`- ${name.padEnd(25)} ${ns.nFormat(cost, "$0.00a")} ${affordable}`);
     }
 
     await ns.sleep(3000);
@@ -62,7 +88,6 @@ function getGameStage(ns) {
       return false;
     }
   })();
-
   if (level < 250) return "early";
   if (hasGangAPI || hasSleeves || level < 800) return "mid";
   return "late";
@@ -71,7 +96,7 @@ function getGameStage(ns) {
 function getAugmentStatus(ns) {
   try {
     const owned = ns.singularity.getOwnedAugmentations(true);
-    const factions = ns.getPlayer().factions;
+    const factions = ns.getPlayer().factions || [];
     const pending = factions.flatMap(f =>
       ns.singularity.getAugmentationsFromFaction(f).filter(a => !owned.includes(a))
     );
@@ -86,13 +111,9 @@ function estimateIncomeETA(history, ns) {
   const deltaTime = (history.at(-1).time - history[0].time) / 1000;
   const deltaMoney = history.at(-1).money - history[0].money;
   const rate = deltaMoney / deltaTime;
-
   if (rate < 1e4) return null;
-
-  const goalMoney = 5e9;
-  const current = history.at(-1).money;
-  const remaining = goalMoney - current;
+  const goal = 5e9;
+  const remaining = goal - history.at(-1).money;
   const etaSec = remaining / rate;
-  if (etaSec < 0) return "✅ Already funded";
-  return `${ns.tFormat(etaSec * 1000)} @ ${ns.nFormat(rate, "$0.00a/s")}`;
+  return etaSec < 0 ? "✅ Already funded" : `${ns.tFormat(etaSec * 1000)} @ ${ns.nFormat(rate, "$0.00a/s")}`;
 }
